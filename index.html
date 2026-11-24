@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COA Lab | Booth's Multiplication</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0b1220;color:#eef2ff;padding:20px}.wrap{max-width:760px;margin:auto}.hero{padding:24px 20px;border-radius:20px;background:linear-gradient(135deg,#172554,#312e81);border:1px solid #394a85}.tag{font-size:12px;letter-spacing:2px;color:#a5b4fc}.hero h1{margin:10px 0;font-size:28px}.hero p{color:#cbd5e1;line-height:1.5}.panel{margin-top:18px;background:#111b2e;border:1px solid #26344d;border-radius:18px;padding:20px}.panel h2{margin:0 0 16px;font-size:20px}.inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:block;color:#cbd5e1;font-size:14px;margin-bottom:7px}input{width:100%;padding:14px;border-radius:12px;border:1px solid #394a65;background:#08111f;color:white;font-size:18px}button{margin-top:16px;width:100%;border:0;border-radius:12px;padding:15px;background:#6366f1;color:white;font-weight:bold;font-size:16px}button:active{opacity:.8}.result{margin-top:15px;padding:15px;border-radius:12px;background:#0b2530;border:1px solid #245362;line-height:1.6;overflow-wrap:anywhere}.steps{overflow-x:auto;margin-top:15px}table{border-collapse:collapse;width:100%;min-width:500px;font-size:14px}th,td{padding:10px;text-align:left;border-bottom:1px solid #26344d}th{color:#a5b4fc}td code{color:#a7f3d0}.muted{color:#94a3b8;font-size:13px;line-height:1.5}.error{color:#fca5a5}.footer{text-align:center;color:#64748b;font-size:12px;padding:20px}@media(max-width:460px){body{padding:12px}.inputs{grid-template-columns:1fr}.hero h1{font-size:24px}}
+</style>
+</head>
+<body><main class="wrap">
+<section class="hero"><div class="tag">COMPUTER ORGANIZATION & ARCHITECTURE</div><h1>COA Lab Simulator</h1><p>Booth's Algorithm for signed binary multiplication. Enter two integers below to see the algorithm work step by step.</p></section>
+<section class="panel"><h2>Enter operands</h2><div class="inputs"><div><label for="m">Multiplicand (M)</label><input id="m" type="number" value="-5" step="1"></div><div><label for="q">Multiplier (Q)</label><input id="q" type="number" value="3" step="1"></div></div><button onclick="calculate()">Run Booth's Algorithm</button><div id="output" aria-live="polite"></div></section>
+<section class="panel"><h2>About the algorithm</h2><p class="muted">Booth's algorithm multiplies signed binary numbers using 2's complement. It examines Q₀ and Q₋₁: 01 means add M, 10 means subtract M, and 00 or 11 means no arithmetic operation. After each operation, an arithmetic right shift is performed.</p></section><div class="footer">COA Lab Simulator • Booth's signed multiplication</div></main>
+<script>
+function bits(v,n){let mask=(1n<<BigInt(n))-1n;return (BigInt(v)&mask).toString(2).padStart(n,'0')}
+function signed(v,n){let mod=1n<<BigInt(n),x=v& (mod-1n);return (x&(mod>>1n))?x-mod:x}
+function calculate(){
+ const mVal=Number(document.getElementById('m').value),qVal=Number(document.getElementById('q').value),out=document.getElementById('output');
+ if(!Number.isInteger(mVal)||!Number.isInteger(qVal)){out.innerHTML='<div class="result error">Please enter valid whole numbers.</div>';return}
+ if(Math.abs(mVal)>100000||Math.abs(qVal)>100000){out.innerHTML='<div class="result error">Please use operands between -100000 and 100000.</div>';return}
+ let n=4;while(mVal<-(2**(n-1))||mVal>=2**(n-1)||qVal<-(2**(n-1))||qVal>=2**(n-1))n++;
+ if(n>32){out.innerHTML='<div class="result error">Operands are too large for this demo.</div>';return}
+ let M=BigInt(mVal),Q=BigInt(qVal),A=0n,qMinus=0n,mask=(1n<<BigInt(n))-1n,rows=[];
+ rows.push({i:'Initial',a:bits(A,n),q:bits(Q,n),qm:'0',pair:bits(Q,n).slice(-1)+'0',op:'Initialize A=0 and Q−1=0'});
+ for(let i=1;i<=n;i++){
+ let q0=Q&1n,pair=q0.toString()+qMinus.toString(),op;
+ if(pair==='01'){A=signed((A+M)&mask,n);op='A = A + M'}else if(pair==='10'){A=signed((A-M)&mask,n);op='A = A − M'}else op='No arithmetic operation';
+ let oldA=A,oldQ=Q,sign=A<0n?1n:0n;
+ qMinus=Q&1n;Q=((A&1n)<<BigInt(n-1))|(Q>>1n);A=(A>>1n); // BigInt shift is arithmetic for negative values
+ A=signed(A,n);Q=Q&mask;
+ rows.push({i,a:bits(A,n),q:bits(Q,n),qm:qMinus.toString(),pair,op:op+'; arithmetic right shift'});
+ }
+ let product=(BigInt(mVal)*BigInt(qVal)),prodBits=bits(product,2*n);
+ let html='<div class="result"><strong>Result:</strong> '+mVal+' × '+qVal+' = <strong>'+product.toString()+'</strong><br><strong>Operand width:</strong> '+n+' bits<br><strong>Binary product (2n bits):</strong> <code>'+prodBits+'</code></div><div class="steps"><table><thead><tr><th>Step</th><th>A</th><th>Q</th><th>Q−1</th><th>Q₀Q−1</th><th>Operation</th></tr></thead><tbody>';
+ rows.forEach(r=>{html+='<tr><td>'+r.i+'</td><td><code>'+r.a+'</code></td><td><code>'+r.q+'</code></td><td><code>'+r.qm+'</code></td><td><code>'+r.pair+'</code></td><td>'+r.op+'</td></tr>'});html+='</tbody></table></div><p class="muted">Registers A and Q are shown after each arithmetic right shift. The final binary product is shown in 2n-bit two’s complement representation.</p>';out.innerHTML=html;
+}
+calculate();
+</script></body></html>
